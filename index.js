@@ -13,13 +13,13 @@ $(function() {
     function median(data) {
         if (data.length == 0) throw new Error("Empty data!");
         var data = data.slice();
-        data.sort();
-        var mid = data.length % 2;
+        data.sort(function(a, b){return a - b});
+        var mid = Math.floor(data.length / 2);
         if (data.length % 2 != 0) {
             return data[mid];
         } else {
             var first = data[mid];
-            var second = data[mid + 1];
+            var second = data[mid - 1];
             return (first + second) / 2;
         }
     }
@@ -38,6 +38,7 @@ $(function() {
                 survivingDefenceTroops.push(defender.troops);
             }
         }
+        console.log(`Surviving attack troops: ${survivingAttackTroops}`)
         console.assert(survivingAttackTroops.length + survivingDefenceTroops.length == RUNS);
         let percentage = (survivingAttackTroops.length / RUNS) * 100;
         $("#outcome").append(`<p>Attacker wins ${percentage}% of the time</p>`);
