@@ -1,11 +1,5 @@
 $(function() {
     "use strict";
-    function getRandomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        //The maximum is exclusive and the minimum is inclusive
-        return Math.floor(Math.random() * (max - min)) + min;
-    }
     function zip(a, b) {
         var args = [].slice.call(arguments);
         var shortest = args.length==0 ? [] : args.reduce(function(a,b){
@@ -16,10 +10,55 @@ $(function() {
             return args.map(function(array){return array[i]})
         });
     }
+    function median(data) {
+        if (data.length == 0) throw new Error("Empty data!");
+        var data = data.slice();
+        data.sort();
+        var mid = data.length % 2;
+        if (data.length % 2 != 0) {
+            return data[mid];
+        } else {
+            var first = data[mid];
+            var second = data[mid + 1];
+            return (first + second) / 2;
+        }
+    }
+    function analyse(attackingTroops, defendingTroops) {
+        const RUNS = 1000;
+        let attacker = new Territory("Attacker", null);
+        let defender = new Territory("Defender", null);
+        let survivingAttackTroops = [];
+        let survivingDefenceTroops = [];
+        for (var run = 0; run < RUNS; run++) {
+            attacker.troops = attackingTroops;
+            defender.troops = defendingTroops;
+            if (attacker.attack(defender)) {
+                survivingAttackTroops.push(attacker.troops);
+            } else {
+                survivingDefenceTroops.push(defender.troops);
+            }
+        }
+        console.assert(survivingAttackTroops.length + survivingDefenceTroops.length == RUNS);
+        let percentage = (survivingAttackTroops.length / RUNS) * 100;
+        $("#outcome").append(`<p>Attacker wins ${percentage}% of the time</p>`);
+        if (survivingAttackTroops.length > 0) {
+            $("#outcome").append(`<p>Median troops surviving a successful attack: ${median(survivingAttackTroops)}</p>`);
+        } else {
+            $("#outcome").append("<p>Attacker never wins</p>");
+        }
+        if (survivingDefenceTroops.length > 0) {
+            $("#outcome").append(`<p>Median troops surviving a successful defense: ${median(survivingDefenceTroops)}</p>`)
+        } else {
+            $("#outcome").append("<p>Defender never survives</p>");
+        }
+    }
+    var sumRoll = 0;
+    var numRoll = 0;
     class Territory {
         constructor(name, troops) {
             this.name = name;
             this.troops = troops;
+            this.random = new Random();
         }
         get attackDice() {
             return Math.max(Math.min(3, this.troops - 1), 1);
@@ -30,7 +69,10 @@ $(function() {
         roll(times) {
             var rolls = [];
             for (var i = 0; i < times; i++) {
-                rolls.push(getRandomInt(1, 7));
+                const value = this.random.integer(1, 6);
+                sumRoll += value;
+                numRoll += 1;
+                rolls.push(value);
             }
             // NOTE: Sorts in reverse order
             rolls.sort(function(a, b){return b-a});
@@ -47,10 +89,10 @@ $(function() {
                 }
                 const attackDice = this.roll(this.attackDice);
                 for (let [attackDie, defenseDie] of zip(attackDice, defenseDice)) {
-                    if (attackDice > defenseDice) {
+                    if (attackDie > defenseDie) {
                         defender.troops -= 1;
                     } else {
-                        this.troops -= 1
+                        this.troops -= 1;
                     }
                 }
                 if (this.troops < 0) throw new Error();
@@ -78,6 +120,9 @@ $(function() {
                 } else {
                     $("#outcome").append(`<p>Defender survives with ${defender.troops} troops remaining</p>`);
                 }
+                break;
+            case "Analyse":
+                analyse(attackingTroops, defendingTroops);
                 break;
             default:
                 alert(`Unknown mode ${mode}`);
