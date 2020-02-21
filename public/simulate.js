@@ -8,36 +8,9 @@ function zip(a, b) {
         return args.map(function(array){return array[i]})
     });
 }
-function median(data) {
-    if (data.length == 0) throw new Error("Empty data!");
-    var data = data.slice();
-    data.sort(function(a, b){return a - b});
-    var mid = Math.floor(data.length / 2);
-    if (data.length % 2 != 0) {
-        return data[mid];
-    } else {
-        var first = data[mid];
-        var second = data[mid - 1];
-        return (first + second) / 2;
-    }
-}
-class AnalysisResult {
-    constructor(survivingAttackTroops, survivingDefenceTroops) {
-        this.survivingAttackTroops = survivingAttackTroops;
-        this.survivingDefenceTroops = survivingDefenceTroops;
-    }
 
-    get runs() {
-        return this.survivingAttackTroops.length
-            + this.survivingDefenceTroops.length;
-    }
-
-    get percentage() {
-        return (this.survivingAttackTroops.length / this.runs) * 100;
-    }
-}
-function analyse(attackingTroops, defendingTroops) {
-    const RUNS = 1000;
+function analyse(attackingTroops, defendingTroops, statusCallback) {
+    const RUNS = 20000;
     let attacker = new Territory("Attacker", null);
     let defender = new Territory("Defender", null);
     let survivingAttackTroops = [];
@@ -50,12 +23,17 @@ function analyse(attackingTroops, defendingTroops) {
         } else {
             survivingDefenceTroops.push(defender.troops);
         }
+        statusCallback(run / RUNS);
     }
     console.assert(survivingAttackTroops.length + survivingDefenceTroops.length == RUNS);
-    return new AnalysisResult(survivingAttackTroops, survivingDefenceTroops);
+    return {
+        survivingAttackTroops: survivingAttackTroops,
+        survivingDefenceTroops: survivingDefenceTroops
+    };
 }
 var sumRoll = 0;
 var numRoll = 0;
+
 class Territory {
     constructor(name, troops) {
         this.name = name;
@@ -103,4 +81,35 @@ class Territory {
     }
 }
 
-export {Territory, analyse, median};
+onmessage = function(e) {
+    const mode = e.data.mode;
+    const attackingTroops = e.data.attackingTroops;
+    const defendingTroops = e.data.defendingTroops;
+    switch (mode) {
+        case "Attack":
+            console.log(`Simulating attack`);
+            const attacker = new Territory("Attacker", attackingTroops);
+            const defender = new Territory("Defender", defendingTroops);   
+            const win = attacker.attack(defender);
+            console.log(`Attacker troops ${attacker.troops}`);
+            postMessage({
+                attacker: attacker.troops,
+                defender: defender.troops,
+                win: win
+            });
+            return;
+        case "Analyse":
+            var i = 0;
+            postMessage(analyse(
+                attackingTroops, defendingTroops,
+                (status) => {
+                    if (i++ % 100 == 0) {
+                        postMessage({status: status})
+                    }
+                }
+            ));
+            break;
+        default:
+            throw new Error(`Invalid mode ${mode}`);
+    }
+}

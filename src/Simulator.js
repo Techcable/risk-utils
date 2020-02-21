@@ -7,7 +7,19 @@ import Container from 'react-bootstrap/Container';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 
-import {Territory, analyse, median} from './simulate.js';
+function median(data) {
+    if (data.length == 0) throw new Error("Empty data!");
+    var data = data.slice();
+    data.sort(function(a, b){return a - b});
+    var mid = Math.floor(data.length / 2);
+    if (data.length % 2 != 0) {
+        return data[mid];
+    } else {
+        var first = data[mid];
+        var second = data[mid - 1];
+        return (first + second) / 2;
+    }
+}
 
 const VALID_MODES = ["Attack", "Analyse"];
 
@@ -106,9 +118,12 @@ function AnalyseOutcome(props) {
 	} else {
 		survivingDefenceMsg = <p>Defender never wins</p>;
 	}
+	const runs = result.survivingAttackTroops.length +
+				result.survivingDefenceTroops.length;
+	const percentage = (result.survivingAttackTroops.length / runs) * 100;
 	return (
 		<div>
-			<p>Attacker wins {result.percentage}% of the time</p>
+			<p>Attacker wins {percentage}% of the time</p>
 			{survivingAttackMsg}
 			{survivingDefenceMsg}
 		</div>
@@ -119,31 +134,79 @@ class AttackSimulator extends React.Component {
 	constructor(props) {
 		super(props);
 		this.state = {
-			formResult: null
+			mode: null,
+			attack: null,
+			analyse: null,
+			status: 0.0
 		};
 	}
 
-	renderOutcome(formResult) {
+	componentDidMount() {
+		this.worker = new Worker('simulate.js');
+		this.worker.onmessage = (e) => {
+			if ('status' in e.data) {
+				// This is just a status update
+				this.setState({status: e.data.status});
+				return;
+			}
+			console.log(`Recieved message ${Object.entries(e.data)}`)
+			switch (this.state.mode) {
+				case null:
+					break;
+				case "Attack":
+					console.log(`Updating attack state`);
+					this.setState({attack: e.data});
+					break;
+				case "Analyse":
+					this.setState({analyse: e.data});
+					break;
+				default:
+					throw new Error(`Invalid mode: ${this.state.mode}`);
+			}
+		};
+	}
+
+	handleFormResult(formResult) {
 		if (formResult == null) return null;
 		const mode = formResult.mode;
+		if (mode == null) return null;
+		// Clear the old state, but update the mode
+		this.setState({
+			mode: mode,
+			attack: null,
+			analyse: null,
+			status: 0.0
+		});
 		const attackingTroops = formResult.attackingTroops;
 		const defendingTroops = formResult.defendingTroops;
-		switch (mode) {
-			case null:
-				return null;
+		this.worker.postMessage({
+			mode: mode,
+			attackingTroops: attackingTroops,
+			defendingTroops: defendingTroops
+		});
+	}
+
+	renderOutcome() {
+		if (this.state.mode == null) return null;
+		switch (this.state.mode) {
 			case "Attack":
-				const attacker = new Territory("Attacker", attackingTroops);
-                const defender = new Territory("Defender", defendingTroops);
-                if (attacker.attack(defender)) {
-                	return <p>Attacker wins with {attacker.troops} troops remaining</p>;
+				const attack = this.state.attack;
+				if (attack == null) {
+					return <p>Awaiting attack results....</p>;
+				} else if (attack.win) {
+                	return <p>Attacker wins with {attack.attacker} troops remaining</p>;
                 } else {
-                	return <p>Defender wins with {defender.troops} remaining</p>;
+                	return <p>Defender wins with {attack.defender} troops remaining</p>;
                 }
             case "Analyse":
-            	let analyseResult = analyse(attackingTroops, defendingTroops);
-            	return <AnalyseOutcome result={analyseResult} />;
+            	const analyse = this.state.analyse;
+            	if (analyse == null) {
+            		return <p>Awaiting analysis results {this.state.status * 100}%....</p>;
+            	} else {
+            		return <AnalyseOutcome result={analyse} />;
+            	}
             default:
-            	throw new Error(mode);
+            	throw new Error(this.state.mode);
 		}
 	}
 
@@ -152,13 +215,13 @@ class AttackSimulator extends React.Component {
 			<Container>
 				<Row>
 					<Col lg={true}>
-						<AttackForm onSubmit={(formResult) => this.setState({formResult: formResult})} />
+						<AttackForm onSubmit={(formResult) => this.handleFormResult(formResult)} />
 					</Col>
 				</Row>
 				<Row>
 					<Col lg={true}>
 						<h4>Outcome</h4>
-						{this.renderOutcome(this.state.formResult)}
+						{this.renderOutcome()}
 					</Col>
 				</Row>
 			</Container>
