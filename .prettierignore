@@ -4,5 +4,8 @@
 **/*.yml
 **/*.yaml
 
+# Ignore json files
+**/*.json
+
 # Ignore markdown files
 **/*.md

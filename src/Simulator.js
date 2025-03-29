@@ -142,7 +142,7 @@ class AttackSimulator extends React.Component {
     }
 
     componentDidMount() {
-        this.worker = new Worker("simulate.js");
+        this.worker = new Worker(new URL("../simulate.js", import.meta.url));
         this.worker.onmessage = (e) => {
             if ("status" in e.data) {
                 // This is just a status update

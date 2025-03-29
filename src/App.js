@@ -6,12 +6,15 @@ import Navbar from "react-bootstrap/Navbar";
 
 import Container from "react-bootstrap/Container";
 
+// add bootstrap
+import "bootstrap/dist/css/bootstrap.min.css";
+
 import AttackSimulator from "./Simulator.js";
 
 function RiskNavBar() {
     return (
         <Navbar bg="light" expand="lg">
-            <Navbar.Brand href="">Risk Utilities</Navbar.Brand>
+            <Navbar.Brand>Risk Utilities</Navbar.Brand>
             <Navbar.Collapse id="navbarSupportedContent">
                 <Nav className="mr-auto">
                     <Nav.Item>
