@@ -1,0 +1,13 @@
+skip_output:
+  - meta
+  - success
+  - summary
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      tags: formatter
+      glob: "*.{js,jsx,ts,tsx,html}"
+      # running prettier directly much faster than using pnpm exec
+      # goes from 470ms -> 170ms with --all-files
+      run: prettier --check -- {staged_files}

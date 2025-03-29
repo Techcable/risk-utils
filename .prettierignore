@@ -1,0 +1,8 @@
+# NOTE: Implicitly respects .gitignore
+
+# Ignore yaml files 
+**/*.yml
+**/*.yaml
+
+# Ignore markdown files
+**/*.md

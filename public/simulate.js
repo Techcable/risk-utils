@@ -1,11 +1,16 @@
 function zip(a, b) {
     var args = [].slice.call(arguments);
-    var shortest = args.length==0 ? [] : args.reduce(function(a,b){
-        return a.length<b.length ? a : b
-    });
+    var shortest =
+        args.length == 0
+            ? []
+            : args.reduce(function (a, b) {
+                  return a.length < b.length ? a : b;
+              });
 
-    return shortest.map(function(_,i){
-        return args.map(function(array){return array[i]})
+    return shortest.map(function (_, i) {
+        return args.map(function (array) {
+            return array[i];
+        });
     });
 }
 
@@ -28,7 +33,7 @@ function analyse(attackingTroops, defendingTroops, statusCallback) {
     console.assert(survivingAttackTroops.length + survivingDefenceTroops.length == RUNS);
     return {
         survivingAttackTroops: survivingAttackTroops,
-        survivingDefenceTroops: survivingDefenceTroops
+        survivingDefenceTroops: survivingDefenceTroops,
     };
 }
 var sumRoll = 0;
@@ -54,7 +59,9 @@ class Territory {
             rolls.push(value);
         }
         // NOTE: Sorts in reverse order
-        rolls.sort(function(a, b){return b-a});
+        rolls.sort(function (a, b) {
+            return b - a;
+        });
         return rolls;
     }
     attack(defender) {
@@ -81,7 +88,7 @@ class Territory {
     }
 }
 
-onmessage = function(e) {
+onmessage = function (e) {
     const mode = e.data.mode;
     const attackingTroops = e.data.attackingTroops;
     const defendingTroops = e.data.defendingTroops;
@@ -89,27 +96,26 @@ onmessage = function(e) {
         case "Attack":
             console.log(`Simulating attack`);
             const attacker = new Territory("Attacker", attackingTroops);
-            const defender = new Territory("Defender", defendingTroops);   
+            const defender = new Territory("Defender", defendingTroops);
             const win = attacker.attack(defender);
             console.log(`Attacker troops ${attacker.troops}`);
             postMessage({
                 attacker: attacker.troops,
                 defender: defender.troops,
-                win: win
+                win: win,
             });
             return;
         case "Analyse":
             var i = 0;
-            postMessage(analyse(
-                attackingTroops, defendingTroops,
-                (status) => {
+            postMessage(
+                analyse(attackingTroops, defendingTroops, (status) => {
                     if (i++ % 100 == 0) {
-                        postMessage({status: status})
+                        postMessage({ status: status });
                     }
-                }
-            ));
+                }),
+            );
             break;
         default:
             throw new Error(`Invalid mode ${mode}`);
     }
-}
+};

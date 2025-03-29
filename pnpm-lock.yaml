@@ -32,6 +32,10 @@ importers:
       react-scripts:
         specifier: 3.4.0
         version: 3.4.0(eslint@6.8.0)(react@16.14.0)(typescript@3.9.10)
+    devDependencies:
+      prettier:
+        specifier: ^3.5.3
+        version: 3.5.3
 
 packages:
 
@@ -4736,6 +4740,11 @@ packages:
   prepend-http@1.0.4:
     resolution: {integrity: sha512-PhmXi5XmoyKw1Un4E+opM2KcsJInDvKyuOumcjjw3waw86ZNjHwVUOOWLc4bCzLdcKNaWBH9e99sbWzDQsVaYg==}
     engines: {node: '>=0.10.0'}
+
+  prettier@3.5.3:
+    resolution: {integrity: sha512-QQtaxnoDJeAkDvDKWCLiwIXkTgRhwYDEQCghU9Z6q03iyek/rxRh/2lC3HB7P8sWT2xC/y5JDctPLBIGzHKbhw==}
+    engines: {node: '>=14'}
+    hasBin: true
 
   pretty-bytes@5.6.0:
     resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
@@ -12517,6 +12526,8 @@ snapshots:
   prelude-ls@1.1.2: {}
 
   prepend-http@1.0.4: {}
+
+  prettier@3.5.3: {}
 
   pretty-bytes@5.6.0: {}
 
