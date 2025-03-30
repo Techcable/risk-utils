@@ -12,9 +12,10 @@ scripts:
   preinstall: npx only-allow pnpm
   predeploy: pnpm run build
   deploy: gh-pages -d build
-  dev: next dev --turbopack
-  build: next build
-  start: pnpx serve@latest ./build
+  # requires building typescript first (use just)
+  dev: just dev
+  build: just build
+  start: just start
 browserslist:
   production:
     - '>0.2%'

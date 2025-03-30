@@ -1,0 +1,27 @@
+/* The primary tsconfig (excluding workers)  */{
+  "extends": "./tsconfig-shared.json",
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "noEmit": false, // setting to true breaks subcomponents
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts",
+    "next-env.d.ts",
+    "build/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/workers/**"
+  ],
+  "references": [
+    {
+      "path": "src/workers/tsconfig.json"
+    }
+  ]
+}

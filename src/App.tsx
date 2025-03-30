@@ -1,5 +1,5 @@
 import React from "react";
-import GITHUB_CORNER_HTML from "./github_corner.js";
+import GITHUB_CORNER_HTML from "./github_corner";
 
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
@@ -9,7 +9,7 @@ import Container from "react-bootstrap/Container";
 // add bootstrap
 import "bootstrap/dist/css/bootstrap.min.css";
 
-import AttackSimulator from "./Simulator.js";
+import AttackSimulator from "./Simulator";
 
 function RiskNavBar() {
     return (
@@ -33,7 +33,7 @@ function RiskHeader() {
         <Container>
             <div>
                 <h1>Risk Utilities</h1>
-                <p class="lead">Simulate attacks and analyse outputs</p>
+                <p className="lead">Simulate attacks and analyse outputs</p>
             </div>
         </Container>
     );

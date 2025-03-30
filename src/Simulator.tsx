@@ -7,70 +7,97 @@ import Container from "react-bootstrap/Container";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 
-function median(data) {
+function median(data: number[]): number {
     if (data.length == 0) throw new Error("Empty data!");
-    var data = data.slice();
+    data = data.slice(); // defensive copy
     data.sort(function (a, b) {
         return a - b;
     });
-    var mid = Math.floor(data.length / 2);
+    let mid = Math.floor(data.length / 2);
     if (data.length % 2 != 0) {
         return data[mid];
     } else {
-        var first = data[mid];
-        var second = data[mid - 1];
+        let first = data[mid];
+        let second = data[mid - 1];
         return (first + second) / 2;
     }
 }
 
-const VALID_MODES = ["Attack", "Analyse"];
+enum Mode {
+    ATTACK = "Attack",
+    ANALYSE = "Analyse",
+}
+function validateMode(name: string): Mode {
+    const validModes = Object.values(Mode) as string[];
+    if (!validModes.includes(name)) throw new Error(`Invalid mode: '${name}'`);
+    return name as Mode;
+}
 
-class AttackForm extends React.Component {
-    constructor(props) {
+/**
+ * Requests a simulation.
+ */
+export interface SimulationRequest {
+    mode: Mode;
+    attackingTroops: number;
+    defendingTroops: number;
+}
+interface SimulationStatusResponse {
+    status: number;
+}
+export type SimulationResponse = SimulationStatusResponse | AttackResult | AnalysisResult;
+
+interface AttackFormProps {
+    onSubmit: (value: SimulationRequest) => void;
+}
+interface AttackFormState {
+    mode: Mode;
+    attackingTroops: string | null;
+    defendingTroops: string | null;
+}
+
+class AttackForm extends React.Component<AttackFormProps, AttackFormState> {
+    constructor(props: AttackFormProps) {
         super(props);
         this.state = {
-            mode: "Attack",
+            mode: Mode.ATTACK,
             attackingTroops: null,
             defendingTroops: null,
         };
     }
 
-    handleSubmit(event) {
+    // TODO: Why is this unused?
+    handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         this.handleClick();
     }
 
     handleClick() {
         const mode = this.state.mode;
-        const attackingTroops = Number.parseInt(this.state.attackingTroops);
-        const defendingTroops = Number.parseInt(this.state.defendingTroops);
-        if (!VALID_MODES.includes(mode)) {
-            alert("Invalid mode: " + mode);
-            return;
-        }
+        const attackingTroops = this.state.attackingTroops ? Number.parseInt(this.state.attackingTroops) : null;
+        const defendingTroops = this.state.defendingTroops ? Number.parseInt(this.state.defendingTroops) : null;
         if (!Number.isInteger(attackingTroops)) {
             alert("Invalid attacking integer: " + this.state.attackingTroops);
             return;
         }
         if (!Number.isInteger(defendingTroops)) {
             alert("Invalid defending troops: " + this.state.defendingTroops);
+            return;
         }
         this.props.onSubmit({
             mode: mode,
-            attackingTroops: attackingTroops,
-            defendingTroops: defendingTroops,
+            // already checked for non-integer values
+            attackingTroops: attackingTroops as number,
+            defendingTroops: defendingTroops as number,
         });
     }
 
-    updateMode(event) {
-        const mode = event.target.value;
-        if (!VALID_MODES.includes(mode)) throw new Error("Invalid mode: " + mode);
-        this.setState({ mode: mode });
+    updateMode(event: React.ChangeEvent<HTMLInputElement>) {
+        this.setState({ mode: validateMode(event.target.value) });
     }
-    updateAttackingTroops(event) {
+    updateAttackingTroops(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({ attackingTroops: event.target.value });
     }
-    updateDefendingTroops(event) {
+    updateDefendingTroops(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({ defendingTroops: event.target.value });
     }
 
@@ -78,16 +105,16 @@ class AttackForm extends React.Component {
         return (
             <Form>
                 <Form.Group>
-                    <Form.Control value={this.state.mode} as="select" onChange={(e) => this.updateMode(e)}>
+                    <Form.Control value={this.state.mode} as="select" onChange={this.updateMode.bind(this)}>
                         <option>Attack</option>
                         <option>Analyse</option>
                     </Form.Control>
                     <Form.Label>Attacking Troops</Form.Label>
-                    <Form.Control type="number" min="2" onChange={(e) => this.updateAttackingTroops(e)} />
+                    <Form.Control type="number" min="2" onChange={this.updateAttackingTroops.bind(this)} />
                     <Form.Label>Defending Troops</Form.Label>
-                    <Form.Control type="number" min="1" onChange={(e) => this.updateDefendingTroops(e)} />
+                    <Form.Control type="number" min="1" onChange={this.updateDefendingTroops.bind(this)} />
                 </Form.Group>
-                <Button variant="primary" onClick={(e) => this.handleClick(e)}>
+                <Button variant="primary" onClick={this.handleClick.bind(this)}>
                     Run
                 </Button>
             </Form>
@@ -95,15 +122,15 @@ class AttackForm extends React.Component {
     }
 }
 
-function AttackOutcome(props) {
-    if (props.attackSuccess) {
+function AttackOutcome(props: AttackResult) {
+    if (props.win) {
         return <p>Attacker wins with ${props.attacker.troops} troops remaining</p>;
     } else {
         return <p>Defender wins with ${props.defender.troops} troops remaining</p>;
     }
 }
 
-function AnalyseOutcome(props) {
+function AnalyseOutcome(props: { result: AnalysisResult }) {
     const result = props.result;
     let survivingAttackMsg;
     let survivingDefenceMsg;
@@ -130,8 +157,29 @@ function AnalyseOutcome(props) {
     );
 }
 
-class AttackSimulator extends React.Component {
-    constructor(props) {
+export interface TerritoryInfo {
+    name: string;
+    troops: number;
+}
+interface AttackResult {
+    win: boolean;
+    attacker: TerritoryInfo;
+    defender: TerritoryInfo;
+}
+interface SimulatorState {
+    mode: Mode | null;
+    attack: AttackResult | null;
+    analyse: AnalysisResult | null;
+    status: number;
+}
+export interface AnalysisResult {
+    survivingAttackTroops: number[];
+    survivingDefenceTroops: number[];
+}
+
+class AttackSimulator extends React.Component<{}, SimulatorState> {
+    worker?: Worker;
+    constructor(props: {}) {
         super(props);
         this.state = {
             mode: null,
@@ -142,14 +190,14 @@ class AttackSimulator extends React.Component {
     }
 
     componentDidMount() {
-        this.worker = new Worker(new URL("../simulate.js", import.meta.url));
+        this.worker = new Worker(new URL("./workers/simulate.ts", import.meta.url));
         this.worker.onmessage = (e) => {
             if ("status" in e.data) {
                 // This is just a status update
                 this.setState({ status: e.data.status });
                 return;
             }
-            console.log(`Recieved message ${Object.entries(e.data)}`);
+            console.log(`Received message ${Object.entries(e.data)}`);
             switch (this.state.mode) {
                 case null:
                     break;
@@ -166,7 +214,7 @@ class AttackSimulator extends React.Component {
         };
     }
 
-    handleFormResult(formResult) {
+    handleFormResult(formResult: SimulationRequest) {
         if (formResult == null) return null;
         const mode = formResult.mode;
         if (mode == null) return null;
@@ -179,11 +227,15 @@ class AttackSimulator extends React.Component {
         });
         const attackingTroops = formResult.attackingTroops;
         const defendingTroops = formResult.defendingTroops;
-        this.worker.postMessage({
+        this.sendMessage({
             mode: mode,
             attackingTroops: attackingTroops,
             defendingTroops: defendingTroops,
         });
+    }
+
+    private sendMessage(message: SimulationRequest) {
+        this.worker!.postMessage(message);
     }
 
     renderOutcome() {
@@ -194,9 +246,9 @@ class AttackSimulator extends React.Component {
                 if (attack == null) {
                     return <p>Awaiting attack results....</p>;
                 } else if (attack.win) {
-                    return <p>Attacker wins with {attack.attacker} troops remaining</p>;
+                    return <p>Attacker wins with {attack.attacker.troops} troops remaining</p>;
                 } else {
-                    return <p>Defender wins with {attack.defender} troops remaining</p>;
+                    return <p>Defender wins with {attack.defender.troops} troops remaining</p>;
                 }
             case "Analyse":
                 const analyse = this.state.analyse;

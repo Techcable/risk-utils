@@ -28,5 +28,7 @@ yarn-error.log*
 # Next.js
 /.next
 
+
 # Typescript
-/tsconfig.tsbuildinfo
+*.tsbuildinfo
+/tsbuild

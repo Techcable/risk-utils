@@ -1,26 +1,34 @@
-function zip(a, b) {
-    var args = [].slice.call(arguments);
-    var shortest =
-        args.length == 0
-            ? []
-            : args.reduce(function (a, b) {
-                  return a.length < b.length ? a : b;
-              });
+import type { TerritoryInfo, AnalysisResult, SimulationRequest, SimulationResponse } from "../Simulator";
 
-    return shortest.map(function (_, i) {
-        return args.map(function (array) {
-            return array[i];
+function zip<T>(a: T[], b: T[]): T[][] {
+    let args = [a, b];
+    let shortest = a.length < b.length ? a : b;
+
+    return shortest.map(function (_: T, idx) {
+        return args.map(function (array: T[]) {
+            return array[idx];
         });
     });
 }
 
-function analyse(attackingTroops, defendingTroops, statusCallback) {
+/**
+ * Use this instead of direct postMessage to enable type checking.
+ */
+function sendResponse(response: SimulationResponse) {
+    postMessage(response);
+}
+
+function analyse(
+    attackingTroops: number,
+    defendingTroops: number,
+    statusCallback: (completionPercent: number) => void,
+): AnalysisResult {
     const RUNS = 20000;
-    let attacker = new Territory("Attacker", null);
-    let defender = new Territory("Defender", null);
+    let attacker = new Territory("Attacker", attackingTroops);
+    let defender = new Territory("Defender", defendingTroops);
     let survivingAttackTroops = [];
     let survivingDefenceTroops = [];
-    for (var run = 0; run < RUNS; run++) {
+    for (let run = 0; run < RUNS; run++) {
         attacker.troops = attackingTroops;
         defender.troops = defendingTroops;
         if (attacker.attack(defender)) {
@@ -36,26 +44,25 @@ function analyse(attackingTroops, defendingTroops, statusCallback) {
         survivingDefenceTroops: survivingDefenceTroops,
     };
 }
-var sumRoll = 0;
-var numRoll = 0;
 
-class Territory {
-    constructor(name, troops) {
+class Territory implements TerritoryInfo {
+    name: string;
+    troops: number;
+
+    constructor(name: string, troops: number) {
         this.name = name;
         this.troops = troops;
     }
-    get attackDice() {
+    get attackDice(): number {
         return Math.max(Math.min(3, this.troops - 1), 1);
     }
-    get defenseDice() {
+    get defenseDice(): number {
         return Math.min(this.troops, 2);
     }
-    roll(times) {
-        var rolls = [];
-        for (var i = 0; i < times; i++) {
+    roll(times: number): number[] {
+        let rolls = [];
+        for (let i = 0; i < times; i++) {
             const value = Math.floor(Math.random() * 6) + 1;
-            sumRoll += value;
-            numRoll += 1;
             rolls.push(value);
         }
         // NOTE: Sorts in reverse order
@@ -64,13 +71,15 @@ class Territory {
         });
         return rolls;
     }
-    attack(defender) {
+    attack(defender: Territory): boolean {
         console.log(`${this.troops} troops attacking ${defender.troops}`);
         const troopThreshold = 1;
         while (this.troops > troopThreshold) {
             const defenseDice = defender.roll(defender.defenseDice);
             if (defenseDice.length == 0) {
-                if (defender.troops != 0) throw new Error(defender.troops);
+                if (defender.troops != 0) {
+                    throw new Error(`Defender has zero dice but nonzero troops: ${defender.troops}`);
+                }
                 return true; // we win
             }
             const attackDice = this.roll(this.attackDice);
@@ -88,7 +97,7 @@ class Territory {
     }
 }
 
-onmessage = function (e) {
+onmessage = function (e: MessageEvent<SimulationRequest>) {
     const mode = e.data.mode;
     const attackingTroops = e.data.attackingTroops;
     const defendingTroops = e.data.defendingTroops;
@@ -99,18 +108,18 @@ onmessage = function (e) {
             const defender = new Territory("Defender", defendingTroops);
             const win = attacker.attack(defender);
             console.log(`Attacker troops ${attacker.troops}`);
-            postMessage({
-                attacker: attacker.troops,
-                defender: defender.troops,
+            sendResponse({
+                attacker: attacker,
+                defender: defender,
                 win: win,
             });
             return;
         case "Analyse":
-            var i = 0;
-            postMessage(
+            let i = 0;
+            sendResponse(
                 analyse(attackingTroops, defendingTroops, (status) => {
                     if (i++ % 100 == 0) {
-                        postMessage({ status: status });
+                        sendResponse({ status: status });
                     }
                 }),
             );

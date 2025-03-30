@@ -1,38 +1,32 @@
+/*
+ * Common configuration between webworkers and primary app
+ *
+ * Based off this: <https://github.com/jakearchibald/typescript-worker-example>
+ */
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "allowJs": true,
-    // TODO: We want this enabled
-    "checkJs": false,
+    "allowJs": false,
     // presumably checking libraries is a waste?
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true, // handled by next.js
+    "outDir": "./tsbuild",
     "incremental": true,
-    "module": "esnext", // next.js
+    "module": "esnext",
     "esModuleInterop": true,
     "moduleResolution": "node", // next.js
     "resolveJsonModule": true,
+    "composite": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    // next.js requires noEmit, but without emitDeclarationOnly it breaks subprojects
+    "emitDeclarationOnly": true,
     "plugins": [
       {
         "name": "next"
       }
     ]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    "next-env.d.ts",
-    "build/types/**/*.ts",
-  ],
   "exclude": [
     "node_modules"
   ]
