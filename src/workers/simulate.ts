@@ -49,6 +49,67 @@ class Territory implements TerritoryInfo {
     name: string;
     troops: number;
 
+    /**
+     * THe probabilities of a specified outcome,
+     * indexed by (attacker dice, defender tipe, defense troops lost)
+     *
+     * This is a 3x3x3 matrix.
+     */
+    private static RESULT_PROBABILITIES = new Float64Array(27);
+    private static computeResultIndex(i: number, j: number, k: number): number {
+        if (
+            !Number.isSafeInteger(i) ||
+            i < 1 ||
+            i > 3 ||
+            !Number.isSafeInteger(j) ||
+            j < 1 ||
+            j > 2 ||
+            !Number.isSafeInteger(k) ||
+            k < 0 ||
+            k >= 3
+        )
+            throw new Error("bad index");
+        return (i - 1) * 9 + (j - 1) * 3 + k;
+    }
+    private static getProbabilities(i: number, j: number): Float64Array {
+        let start = this.computeResultIndex(i, j, 0);
+        return this.RESULT_PROBABILITIES.subarray(start, start + 3);
+    }
+    private static setResultProb(i: number, j: number, k: number, val: number) {
+        let idx = this.computeResultIndex(i, j, k);
+        if (!Number.isFinite(val) || val < 0 || val > 1) throw new Error(`bad value: ${val}`);
+        this.RESULT_PROBABILITIES[idx] = val;
+    }
+    private static CUMULATIVE_RESULT_PROBABILITIES = new Float64Array(27);
+    static {
+        // copied straight from Osborne's Table 2
+        this.setResultProb(1, 1, 1, 15 / 36);
+        this.setResultProb(1, 1, 0, 21 / 36);
+        this.setResultProb(1, 2, 1, 55 / 216);
+        this.setResultProb(1, 2, 0, 161 / 216);
+        this.setResultProb(2, 1, 1, 125 / 216);
+        this.setResultProb(2, 1, 0, 91 / 216);
+        this.setResultProb(2, 2, 2, 295 / 1296);
+        this.setResultProb(2, 2, 1, 420 / 1296);
+        this.setResultProb(2, 2, 0, 581 / 1296);
+        this.setResultProb(3, 1, 1, 855 / 1296);
+        this.setResultProb(3, 1, 0, 441 / 1296);
+        this.setResultProb(3, 2, 2, 2890 / 7776);
+        this.setResultProb(3, 2, 1, 2611 / 7776);
+        this.setResultProb(3, 2, 0, 2275 / 7776);
+        for (let i = 1; i <= 3; i++) {
+            for (let j = 1; j <= 2; j++) {
+                let cum = 0;
+                for (let k = 0; k < 3; k++) {
+                    let idx = this.computeResultIndex(i, j, k);
+                    cum += this.RESULT_PROBABILITIES[idx];
+                    this.CUMULATIVE_RESULT_PROBABILITIES[idx] = cum;
+                }
+                if (Math.abs(1 - cum) > 10e-9) throw new Error(`bad sum ${cum} for (${i},${j})`);
+            }
+        }
+    }
+
     constructor(name: string, troops: number) {
         this.name = name;
         this.troops = troops;
@@ -74,24 +135,30 @@ class Territory implements TerritoryInfo {
     attack(defender: Territory): boolean {
         console.log(`${this.troops} troops attacking ${defender.troops}`);
         const troopThreshold = 1;
+        const PROB_TABLE = Territory.CUMULATIVE_RESULT_PROBABILITIES;
         while (this.troops > troopThreshold) {
-            const defenseDice = defender.roll(defender.defenseDice);
-            if (defenseDice.length == 0) {
-                if (defender.troops != 0) {
-                    throw new Error(`Defender has zero dice but nonzero troops: ${defender.troops}`);
-                }
-                return true; // we win
+            let defenseDice = defender.defenseDice;
+            if (defenseDice == 0) return true; // we win
+            let attackDice = this.attackDice;
+            let diceAtRisk = Math.min(defenseDice, attackDice);
+            const x = Math.random();
+            // unrolled loop
+            let tableOffset = (attackDice - 1) * 9 + (defenseDice - 1) * 3;
+            const a = PROB_TABLE[tableOffset];
+            const b = PROB_TABLE[tableOffset + 1];
+            let defenseLoss: number;
+            if (x <= a) {
+                defenseLoss = 0;
+            } else if (x <= b) {
+                defenseLoss = 1;
+            } else {
+                defenseLoss = 2;
             }
-            const attackDice = this.roll(this.attackDice);
-            for (let [attackDie, defenseDie] of zip(attackDice, defenseDice)) {
-                if (attackDie > defenseDie) {
-                    defender.troops -= 1;
-                } else {
-                    this.troops -= 1;
-                }
-            }
-            if (this.troops < 0) throw new Error();
-            if (defender.troops < 0) throw new Error();
+            let attackLoss = diceAtRisk - defenseLoss;
+            console.assert(defenseLoss >= 0 && defenseLoss <= 2);
+            console.assert(attackLoss >= 0 && attackLoss <= 2);
+            this.troops -= attackLoss;
+            defender.troops -= defenseLoss;
         }
         return false; // we loose or give up
     }
