@@ -12,6 +12,15 @@ dev: check
 build: check
     pnpm exec next build
 
+# Needs to be set explicitly since find-cache-dir can't handle package.yml
+export CACHE_DIR:="./node_modules/.cache"
+
+# Deploy to github pages
+deploy-pages: build
+    @# NOTE: Need nojekyll because of underscore _next file
+    pnpm exec gh-pages --nojekyll --dist build --cname risk.techcable.net
+
+
 # Serve the built information
 serve:
     miniserve --spa --index index.html build/
